@@ -8,9 +8,8 @@ new_init_db = '''def init_db():
     try:
         if IS_POSTGRES:
             # PostgreSQL specific schema
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS users (
+            queries = [
+                """CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
@@ -31,33 +30,33 @@ new_init_db = '''def init_db():
                     allowed_providers TEXT,
                     can_use_own_key INTEGER NOT NULL DEFAULT 1,
                     permissions TEXT
-                );
-                CREATE TABLE IF NOT EXISTS sessions (
+                )""",
+                """CREATE TABLE IF NOT EXISTS sessions (
                     token TEXT PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     created_at TEXT NOT NULL,
                     expires_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS usage_daily (
+                )""",
+                """CREATE TABLE IF NOT EXISTS usage_daily (
                     user_id INTEGER NOT NULL,
                     date TEXT NOT NULL,
                     tokens_used INTEGER NOT NULL DEFAULT 0,
                     exercises_count INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (user_id, date)
-                );
-                CREATE TABLE IF NOT EXISTS kv_store (
+                )""",
+                """CREATE TABLE IF NOT EXISTS kv_store (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS org_api_keys (
+                )""",
+                """CREATE TABLE IF NOT EXISTS org_api_keys (
                     provider TEXT NOT NULL CHECK(provider IN ('anthropic','openai','gemini','mistral')),
                     school_id INTEGER,
                     api_key TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     updated_by INTEGER
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_org_api_keys_scoped ON org_api_keys(provider, COALESCE(school_id, -1));
-                CREATE TABLE IF NOT EXISTS generation_events (
+                )""",
+                """CREATE UNIQUE INDEX IF NOT EXISTS idx_org_api_keys_scoped ON org_api_keys(provider, (COALESCE(school_id, -1)))""",
+                """CREATE TABLE IF NOT EXISTS generation_events (
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     row_id TEXT NOT NULL,
@@ -71,15 +70,15 @@ new_init_db = '''def init_db():
                     kind TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     school_id INTEGER
-                );
-                CREATE INDEX IF NOT EXISTS idx_gen_events_user_date ON generation_events(user_id, created_at);
-                CREATE TABLE IF NOT EXISTS schools (
+                )""",
+                """CREATE INDEX IF NOT EXISTS idx_gen_events_user_date ON generation_events(user_id, created_at)""",
+                """CREATE TABLE IF NOT EXISTS schools (
                     id SERIAL PRIMARY KEY,
                     name TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     created_by INTEGER
-                );
-                CREATE TABLE IF NOT EXISTS vault_items (
+                )""",
+                """CREATE TABLE IF NOT EXISTS vault_items (
                     id SERIAL PRIMARY KEY,
                     school_id INTEGER NOT NULL,
                     author_id INTEGER NOT NULL,
@@ -97,18 +96,20 @@ new_init_db = '''def init_db():
                     save_count INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     unpublished_at TEXT
-                );
-                CREATE INDEX IF NOT EXISTS idx_vault_items_school ON vault_items(school_id, unpublished_at, created_at);
-                CREATE TABLE IF NOT EXISTS vault_saves (
+                )""",
+                """CREATE INDEX IF NOT EXISTS idx_vault_items_school ON vault_items(school_id, unpublished_at, created_at)""",
+                """CREATE TABLE IF NOT EXISTS vault_saves (
                     id SERIAL PRIMARY KEY,
                     vault_item_id INTEGER NOT NULL,
                     user_id INTEGER NOT NULL,
                     created_at TEXT NOT NULL,
                     UNIQUE(vault_item_id, user_id)
-                );
-                CREATE INDEX IF NOT EXISTS idx_vault_saves_user ON vault_saves(user_id, created_at);
-                """
-            )
+                )""",
+                """CREATE INDEX IF NOT EXISTS idx_vault_saves_user ON vault_saves(user_id, created_at)"""
+            ]
+            
+            for q in queries:
+                conn.execute(q)
             conn.commit()
             
             # Check super_admin
@@ -125,17 +126,10 @@ new_init_db = '''def init_db():
                 )
                 conn.commit()
                 return username, password
-            return None
-        else:'''
+            return None'''
 
-old_sqlite_init = '''conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users ('''
-
-# Insert the new code right after `def init_db():\n    conn = _connect()\n    try:`
-code = code.replace(old_sqlite_init, new_init_db + '\n            ' + old_sqlite_init)
+code = re.sub(r'def init_db\(\):.*?return None', new_init_db, code, flags=re.DOTALL)
 
 with open('build/auth_db.py', 'w', encoding='utf-8') as f:
     f.write(code)
-
-print("init_db fixed")
+print('Done!')
