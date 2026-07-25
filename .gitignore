@@ -1,0 +1,14 @@
+# Secrets -- never commit real credentials
+build/.env
+.env
+
+# Database (real school data + backups)
+build/app.db
+build/app.db.bak-*
+
+# Logs
+build/*.log
+
+# Python
+build/__pycache__/
+*.pyc

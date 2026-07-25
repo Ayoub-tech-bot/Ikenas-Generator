@@ -1,0 +1,79 @@
+<problem>
+<script type="text/javascript">
+(function(){
+window.addEventListener("message", function(e){
+if(!e.data) return;
+if(e.data.type == "iframeResize") {
+document.querySelectorAll("iframe").forEach(function(f){
+if(f.contentWindow === e.source) {
+f.style.height = e.data.height;
+}
+});
+}
+});
+})();
+</script>
+
+<script type="loncapa/python">
+<![CDATA[
+import json
+
+def check_function(e, ans):
+    try:
+        # 1. edX envoie la réponse dans un dictionnaire JSON stringifié
+        r = json.loads(ans)
+        ans_data = r.get("answer", "{}")
+        
+        # 2. Selon la version d'edX, ans_data peut être DÉJÀ un dictionnaire ou une chaîne de caractères
+        if isinstance(ans_data, str):
+            try:
+                payload = json.loads(ans_data)
+            except Exception:
+                payload = ans_data
+        else:
+            payload = ans_data
+            
+        # 3. Extraction sécurisée des variables
+        if isinstance(payload, dict):
+            g = float(payload.get("grade", 0.0))
+            score = payload.get("score", 0)
+            total = payload.get("total", 0)
+        else:
+            # Sécurité si on ne reçoit qu'un simple nombre
+            g = float(payload)
+            score = int(g * 100)
+            total = 100
+            
+        # S'assurer que la note est comprise entre 0.0 et 1.0
+        g = max(0.0, min(1.0, g))
+        
+        # Validation du seuil (supérieur à 50%)
+        is_ok = False
+        if g - 0.5 > 0:
+            is_ok = True
+            
+        # Utilisation de .format() (compatible 100% avec tous les serveurs Python/edX)
+        percentage = int(round(g * 100))
+        status_word = "Validé" if is_ok else "Échec"
+        dynamic_msg = "Score: {}% ({}/{}) {}".format(percentage, score, total, status_word)
+            
+        return {"ok": is_ok, "grade_decimal": g, "msg": dynamic_msg}
+        
+    except Exception as ex:
+        # Renvoie l'erreur exacte à l'écran pour déboguer si besoin
+        return {"ok": False, "grade_decimal": 0.0, "msg": "Erreur Python interne: " + str(ex)}
+]]>
+</script>
+
+<customresponse cfn="check_function">
+  <jsinput
+    gradefn="MonExercice.getGrade"
+    get_statefn="MonExercice.getState"
+    set_statefn="MonExercice.setState"
+    initial_state='{"answers": {}}'
+    width="100%"
+    height="530"
+    html_file="/Courses/course3.html"
+  />
+</customresponse>
+</problem>
