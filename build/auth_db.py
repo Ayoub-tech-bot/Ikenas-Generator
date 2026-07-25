@@ -131,12 +131,6 @@ def verify_password(password, password_hash, salt):
 
 
 def init_db():
-    """Create tables if missing and bootstrap a super_admin if the users table is empty.
-    Returns (username, password) of the bootstrap account if one was just created, else None.
-    """
-    conn = _connect()
-    try:
-        def init_db():
     conn = _connect()
     try:
         if IS_POSTGRES:
