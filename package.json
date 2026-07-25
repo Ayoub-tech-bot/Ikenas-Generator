@@ -1,0 +1,12 @@
+{
+  "name": "salma-generator",
+  "version": "1.0.0",
+  "description": "AI Course Generator",
+  "main": "build/server.py",
+  "scripts": {
+    "start": "bash start.sh"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
