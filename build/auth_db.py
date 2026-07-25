@@ -42,6 +42,18 @@ QUOTA_TYPES = ("unlimited", "tokens", "count")
 
 
 
+
+class CursorWrapper:
+    def __init__(self, cur, row_id=None):
+        self._cur = cur
+        self.lastrowid = row_id if row_id is not None else getattr(cur, 'lastrowid', None)
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    def __iter__(self):
+        return iter(self._cur)
+
 class DBConnection:
     def __init__(self):
         self.is_pg = IS_POSTGRES
@@ -76,17 +88,18 @@ class DBConnection:
                 else:
                     cur.execute(query)
                     
+                row_id = None
                 if is_insert and cur.description:
                     row = cur.fetchone()
                     if row:
-                        cur.lastrowid = row['id']
+                        row_id = row['id']
             except psycopg2.errors.UniqueViolation as e:
                 if 'INSERT OR IGNORE' in query:
                     self.conn.rollback()
-                    return cur
+                    return CursorWrapper(cur)
                 self.conn.rollback()
                 raise sqlite3.IntegrityError(str(e))
-            return cur
+            return CursorWrapper(cur, row_id)
         else:
             if args:
                 return self.conn.execute(query, args)
