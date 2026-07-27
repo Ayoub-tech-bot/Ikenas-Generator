@@ -5292,12 +5292,21 @@ document.getElementById('libKindExerciceBtn').addEventListener('click', () => {
   libraryViewKind = 'exercice';
   document.getElementById('libKindExerciceBtn').classList.add('active');
   document.getElementById('libKindLeconBtn').classList.remove('active');
+  document.getElementById('libKindVideoBtn').classList.remove('active');
   renderLibraryTree(document.getElementById('libSearch').value);
 });
 document.getElementById('libKindLeconBtn').addEventListener('click', () => {
   libraryViewKind = 'lecon';
   document.getElementById('libKindLeconBtn').classList.add('active');
   document.getElementById('libKindExerciceBtn').classList.remove('active');
+  document.getElementById('libKindVideoBtn').classList.remove('active');
+  renderLibraryTree(document.getElementById('libSearch').value);
+});
+document.getElementById('libKindVideoBtn').addEventListener('click', () => {
+  libraryViewKind = 'video';
+  document.getElementById('libKindVideoBtn').classList.add('active');
+  document.getElementById('libKindExerciceBtn').classList.remove('active');
+  document.getElementById('libKindLeconBtn').classList.remove('active');
   renderLibraryTree(document.getElementById('libSearch').value);
 });
 
@@ -6222,6 +6231,7 @@ document.getElementById('libImportVideoConfirmBtn').addEventListener('click', as
     const items = [{
       rowId: rowId,
       type: 'video',
+      kind: 'video',
       variante: slugifyJs(title) || 'video-' + videoId,
       contenuB64: utf8ToB64(iframeHtml),
       isYoutube: true,
@@ -6234,7 +6244,13 @@ document.getElementById('libImportVideoConfirmBtn').addEventListener('click', as
     renderDetail();
     renderLibraryTree(document.getElementById('libSearch').value);
     document.getElementById('libImportVideoModal').classList.add('hidden');
-    alert("Vidéo importée avec succès !");
+    
+    const failed = (data.results || []).filter(r => !r.ok);
+    if (failed.length > 0) {
+      alert(`Erreur: ${failed.map(f => f.error).join(', ')}`);
+    } else {
+      alert("Vidéo importée avec succès !");
+    }
   } catch (err) {
     alert("Erreur lors de l'import : " + err.message);
   } finally {
@@ -6442,8 +6458,14 @@ function isGradableExercice(decodedHtml) {
 async function buildOlxPackage(rows, opts) {
   const { org, course, run, displayName, language, platformUrl } = opts;
 
+  const kindOrder = { 'lecon': 1, 'video': 2, 'exercice': 3 };
   const rowsWithGen = rows
-    .map(row => ({ row, genExercices: row.exercices.filter(e => e.statut === 'genere') }))
+    .map(row => {
+      const genExercices = row.exercices
+        .filter(e => e.statut === 'genere')
+        .sort((a, b) => (kindOrder[a.kind || 'exercice'] || 99) - (kindOrder[b.kind || 'exercice'] || 99));
+      return { row, genExercices };
+    })
     .filter(r => r.genExercices.length > 0);
 
   // Niveau > Unité > Section > Sujet > Titre (4 sous-niveaux) : meme hierarchie que
@@ -6475,7 +6497,7 @@ async function buildOlxPackage(rows, opts) {
 
   for (const d of ['course', 'course/about', 'course/assets', 'course/chapter', 'course/course',
                     'course/html', 'course/info', 'course/policies', 'course/policies/' + run,
-                    'course/problem', 'course/sequential', 'course/static', 'course/vertical']) {
+                    'course/problem', 'course/sequential', 'course/static', 'course/vertical', 'course/video']) {
     addDir(d);
   }
 

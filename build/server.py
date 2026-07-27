@@ -1046,7 +1046,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not auth_db.check_sujet_allowed(user, row.get("sujet")):
                     results.append({"rowId": row_id, "ok": False, "error": "sujet non autorise"})
                     continue
-                if not auth_db.check_type_allowed(user, item.get("type")):
+                if item.get("type") not in ("video", "import_externe") and not auth_db.check_type_allowed(user, item.get("type")):
                     results.append({"rowId": row_id, "ok": False, "error": "type d'exercice non autorise"})
                     continue
                 ex_type = item.get("type")
@@ -1066,6 +1066,8 @@ class Handler(BaseHTTPRequestHandler):
                     counter += 1
 
                 ex = {"type": ex_type, "variante": ex_variante}
+                if "kind" in item:
+                    ex["kind"] = item["kind"]
                 row["exercices"].append(ex)
                 ex["contenuB64"] = contenu_b64
                 if item.get("isPdf"):
