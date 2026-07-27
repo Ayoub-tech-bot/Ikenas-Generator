@@ -609,17 +609,42 @@ def publish_course(rows, catalogue, opts, progress_cb=lambda msg: None):
 
                 ordered_prob_locs = []
                 def sort_key(ex):
+                    if ex.get("isPdf"): return 0
                     dec = generate_local.b64_to_utf8(ex["contenuB64"])
                     return 1 if is_gradable_exercice(dec) else 0
                 sorted_exercices = sorted(vertical["exercices"], key=sort_key)
                 
                 for i, ex in enumerate(sorted_exercices):
-                    decoded = generate_local.b64_to_utf8(ex["contenuB64"])
+                    is_pdf = ex.get("isPdf", False)
+                    if not is_pdf:
+                        decoded = generate_local.b64_to_utf8(ex["contenuB64"])
+                    
                     display_name_ex = f"{row.get('titre', '')} — {label_for_type(catalogue, ex.get('type', ''))}"
 
                     base_name = re.sub(r"[^\w]", "_", display_name_ex, flags=re.UNICODE)[:70]
                     import time
                     timestamp = int(time.time())
+                    
+                    if is_pdf:
+                        asset_name, suffix = f"{base_name}_pdf_{timestamp}", 2
+                        while asset_name in used_asset_names:
+                            asset_name = f"{base_name}_pdf_{timestamp}_{suffix}"
+                            suffix += 1
+                        used_asset_names.add(asset_name)
+                        filename = f"{asset_name}.pdf"
+
+                        progress_cb(f"  Upload asset PDF : {filename}")
+                        import base64
+                        pdf_bytes = base64.b64decode(ex["pdfBase64"])
+                        upload_asset(session, studio_url, course_id, filename, pdf_bytes)
+                        pdf_file_url = f"{platform_url}/asset-v1:{org}+{course}+{run}+type@asset+block@{filename}"
+                        
+                        html_iframe_data = f'<iframe src="{pdf_file_url}" width="100%" height="800" frameborder="0"></iframe>'
+                        prob_loc = find_or_create_block(session, studio_url, course_id, blocks_by_id, vert_locator, "html", display_name_ex, data=html_iframe_data)
+                        if prob_loc: ordered_prob_locs.append(prob_loc)
+                        counts["html"] += 1
+                        continue
+
                     asset_name, suffix = f"{base_name}_{timestamp}", 2
                     while asset_name in used_asset_names:
                         asset_name = f"{base_name}_{timestamp}_{suffix}"
@@ -632,9 +657,7 @@ def publish_course(rows, catalogue, opts, progress_cb=lambda msg: None):
                     if not html_bytes.startswith(b'\xef\xbb\xbf'):
                         html_bytes = b'\xef\xbb\xbf' + html_bytes
                     upload_asset(session, studio_url, course_id, filename, html_bytes)
-                    html_file_url = (
-                        f"{platform_url}/asset-v1:{org}+{course}+{run}+type@asset+block@{filename}"
-                    )
+                    html_file_url = f"{platform_url}/asset-v1:{org}+{course}+{run}+type@asset+block@{filename}"
 
                     if is_gradable_exercice(decoded):
                         xml_data = build_problem_xml(display_name_ex, html_file_url)

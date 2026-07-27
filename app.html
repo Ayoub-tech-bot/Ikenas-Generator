@@ -774,10 +774,10 @@
     <div class="prompt-modal-body">
       <label id="libImportHtmlDropzone" class="import-dropzone" for="libImportHtmlInput">
         <span class="material-symbols-rounded" style="font-size:32px; color:var(--accent);">cloud_upload</span>
-        <div style="font-weight:600; margin-top:8px;">Cliquez ou glissez-déposez des fichiers HTML ici</div>
+        <div style="font-weight:600; margin-top:8px;">Cliquez ou glissez-déposez des fichiers HTML ou PDF ici</div>
         <div style="font-size:12px; color:var(--muted); margin-top:4px;">Plusieurs fichiers peuvent être sélectionnés</div>
       </label>
-      <input type="file" id="libImportHtmlInput" accept=".html,.htm" multiple style="display:none;">
+      <input type="file" id="libImportHtmlInput" accept=".html,.htm,.pdf" multiple style="display:none;">
       <div id="libImportHtmlEmpty" class="placeholder" style="margin-top:32px;">Aucun fichier sélectionné.</div>
       <div id="libImportHtmlCards" style="max-height:48vh; overflow-y:auto; margin-top:16px; display:flex; flex-direction:column; gap:12px;"></div>
     </div>
@@ -5843,18 +5843,42 @@ let htmlImportItems = [];
 async function parseImportHtmlFiles(files) {
   const parsed = [];
   for (const file of files) {
-    const text = await file.text();
-    const trimmed = text.trim().toLowerCase();
+    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    const text = isPdf ? null : await file.text();
     const item = {
       _uid: ++libImportUidCounter, path: file.name,
       niveau: null, unite: null, section: null, sujet: null, rowId: null,
     };
-    if (!trimmed.startsWith('<!doctype') && !trimmed.startsWith('<html')) {
-      item.parseError = "ne ressemble pas à un exercice HTML valide";
+    if (isPdf) {
+      item.isPdf = true;
+      item.pdfBase64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(file);
+      });
+      item.html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Preview</title>
+<style>body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }</style>
+</head>
+<body>
+<iframe src="data:application/pdf;base64,${item.pdfBase64}#toolbar=0" width="100%" height="100%" style="border:none;"></iframe>
+</body>
+</html>`;
     } else {
-      item.html = text;
-      
-      const m = file.name.match(/(\d)eme-s(\d)-(.*?)-.*?\.html?/i);
+      const trimmed = text.trim().toLowerCase();
+      if (!trimmed.startsWith('<!doctype') && !trimmed.startsWith('<html')) {
+        item.parseError = "ne ressemble pas à un exercice HTML valide";
+      } else {
+        item.html = text;
+      }
+    }
+    
+    if (!item.parseError) {
+      const m = file.name.match(/(\d)eme-s(\d)-(.*?)-.*?\.(?:html?|pdf)/i);
       if (m && state.programme) {
         const niveauNorm = slugifyJs(`${m[1]}eme`);
         const sectionNorm = slugifyJs(`Section ${m[2]}`);
@@ -5880,7 +5904,7 @@ async function parseImportHtmlFiles(files) {
 }
 
 async function handleHtmlFilesSelected(fileList) {
-  const files = Array.from(fileList || []).filter(f => /\.html?$/i.test(f.name));
+  const files = Array.from(fileList || []).filter(f => /\.(html?|pdf)$/i.test(f.name));
   if (files.length === 0) return;
   const raw = await parseImportHtmlFiles(files);
   htmlImportItems = htmlImportItems.concat(raw);
@@ -6028,10 +6052,17 @@ document.getElementById('libImportHtmlModal').addEventListener('click', (e) => {
 document.getElementById('libImportHtmlConfirmBtn').addEventListener('click', async () => {
   const typeSelect = document.getElementById('libImportHtmlTypeSelect');
   const importType = typeSelect ? typeSelect.value : 'import_externe';
-  const items = htmlImportItems.filter(htmlImportItemIsValid).map(item => ({
-    rowId: item.rowId, type: importType, variante: slugifyJs(item.path.replace(/\.html?$/i, '')),
-    contenuB64: utf8ToB64(item.html),
-  }));
+  const items = htmlImportItems.filter(htmlImportItemIsValid).map(item => {
+    let res = {
+      rowId: item.rowId, type: importType, variante: slugifyJs(item.path.replace(/\.(html?|pdf)$/i, '')),
+      contenuB64: utf8ToB64(item.html),
+    };
+    if (item.isPdf) {
+      res.isPdf = true;
+      res.pdfBase64 = item.pdfBase64;
+    }
+    return res;
+  });
   if (items.length === 0) return;
   const btn = document.getElementById('libImportHtmlConfirmBtn');
   btn.disabled = true;

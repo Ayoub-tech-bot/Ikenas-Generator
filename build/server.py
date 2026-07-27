@@ -1068,6 +1068,9 @@ class Handler(BaseHTTPRequestHandler):
                 ex = {"type": ex_type, "variante": ex_variante}
                 row["exercices"].append(ex)
                 ex["contenuB64"] = contenu_b64
+                if item.get("isPdf"):
+                    ex["isPdf"] = True
+                    ex["pdfBase64"] = item.get("pdfBase64")
                 ex["statut"] = "genere"
                 ex["genereLe"] = import_date
                 ex["demandeModification"] = ""

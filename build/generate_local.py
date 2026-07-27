@@ -132,7 +132,7 @@ def has_jschannel(html):
 
 
 def inject_pdf_button(html):
-    if 'id="pdf-download-btn"' in html and 'window.open' in html:
+    if 'id="pdf-download-btn"' in html and "h.indexOf('http')" in html:
         return html
     
     # Remove old button if exists
@@ -141,7 +141,7 @@ def inject_pdf_button(html):
     
     button_html = """
     <div id="pdf-download-btn" style="text-align: center; margin: 30px 0;">
-        <button onclick="var w=window.open(window.location.href.split('?')[0]+'?print=1', '_blank');" style="background-color: #2c3e50; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+        <button type="button" onclick="var h=window.location.href; if(h.indexOf('http')===0){window.open(h.split('?')[0]+'?print=1', '_blank');}else{var w=window.open('', '_blank');w.document.write(document.documentElement.outerHTML);w.document.close();setTimeout(function(){w.print();},800);}" style="background-color: #2c3e50; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Télécharger en PDF / Imprimer
         </button>

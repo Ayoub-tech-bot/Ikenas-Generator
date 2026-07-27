@@ -22,7 +22,7 @@ def main():
         
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute('SELECT key, value FROM kv_store WHERE key LIKE "programme:%"')
+    cursor.execute('SELECT key, value FROM kv_store WHERE key LIKE "programme%"')
     rows = cursor.fetchall()
 
     modified_count = 0
@@ -33,7 +33,7 @@ def main():
         for row in prog:
             if 'exercices' in row:
                 for ex in row['exercices']:
-                    if 'contenuB64' in ex:
+                    if 'contenuB64' in ex and ex['contenuB64']:
                         html = b64_to_utf8(ex['contenuB64'])
                         # This will strip old button and add the new one
                         new_html = generate_local.inject_pdf_button(html)
@@ -44,7 +44,7 @@ def main():
                     
                     if 'historique' in ex:
                         for hist in ex['historique']:
-                            if 'contenuB64' in hist:
+                            if 'contenuB64' in hist and hist['contenuB64']:
                                 html = b64_to_utf8(hist['contenuB64'])
                                 new_html = generate_local.inject_pdf_button(html)
                                 if new_html != html:
