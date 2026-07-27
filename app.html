@@ -438,6 +438,7 @@
     <div class="subtabs" id="libKindToggle" style="margin-bottom:10px;">
       <button class="subtab-btn active" id="libKindExerciceBtn" data-kind="exercice"><span class="material-symbols-rounded">quiz</span>Exercices</button>
       <button class="subtab-btn" id="libKindLeconBtn" data-kind="lecon"><span class="material-symbols-rounded">menu_book</span>Leçons</button>
+      <button class="subtab-btn" id="libKindVideoBtn" data-kind="video"><span class="material-symbols-rounded">smart_display</span>Vidéos</button>
     </div>
     <div class="search-box">
       <span class="material-symbols-rounded">search</span>
@@ -454,10 +455,11 @@
       <button id="libModifySelectedBtn" class="btn-add" disabled data-perm="modify" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">edit_note</span>Modifier la sélection</button>
       <button id="libExportZipBtn" class="btn-add" data-perm="exportZip" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">folder_zip</span>Exporter en .zip</button>
       <button id="libExportPdfBtn" class="btn-add" data-perm="exportZip" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">picture_as_pdf</span>Exporter en PDF</button>
-      <button id="libExportOlxBtn" class="btn-add" data-perm="exportOlx" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">school</span>Exporter vers Open edX</button>
+      <button id="libExportOlxBtn" class="btn-add" data-perm="exportOlx" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">school</span>Exporter vers Ikenas</button>
       <label class="btn-add" for="libImportZipInput" data-perm="importZip" style="width:100%; justify-content:center; margin:0;"><span class="material-symbols-rounded">drive_folder_upload</span>Importer un .zip</label>
       <input type="file" id="libImportZipInput" accept=".zip" style="display:none;">
       <button id="libImportHtmlOpenBtn" class="btn-add" data-perm="importZip" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">upload_file</span>Importer des fichiers HTML</button>
+      <button id="libImportVideoBtn" class="btn-add" data-perm="importZip" style="width:100%; justify-content:center;"><span class="material-symbols-rounded">smart_display</span>Importer une vidéo YouTube</button>
       <button id="libResetBtn" class="btn-add" data-perm="reset" style="width:100%; justify-content:center; color:#b91c1c; border-color:#fecaca;" title="Efface le contenu généré (repasse en « à générer »), sans retirer la planification"><span class="material-symbols-rounded">restart_alt</span>Réinitialiser (repartir à zéro)</button>
     </div>
     <div id="libTree"></div>
@@ -471,6 +473,7 @@
         <button id="libPdfBtn" class="btn-add" style="display:none;"><span class="material-symbols-rounded">picture_as_pdf</span>PDF</button>
         <button id="libOpenTabBtn" class="btn-add"><span class="material-symbols-rounded">open_in_new</span>Ouvrir</button>
         <button id="libPublishVaultBtn" class="btn-add"><span class="material-symbols-rounded">photo_library</span>Publier au coffre</button>
+        <button id="libDeleteBtn" class="btn-add" style="color:#b91c1c; border-color:#fecaca;"><span class="material-symbols-rounded">delete</span>Supprimer</button>
       </div>
     </div>
     <div class="frame-wrap">
@@ -790,6 +793,34 @@
         </select>
       </div>
       <button id="libImportHtmlConfirmBtn" class="btn-cfg-primary" disabled>Valider l'importation</button>
+    </div>
+  </div>
+</div>
+
+<div id="libImportVideoModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:800px;">
+    <div class="modal-header">
+      <span style="display:flex; align-items:center; gap:8px;"><span class="material-symbols-rounded">smart_display</span>Importer une vidéo YouTube</span>
+      <button class="btn-close" id="libImportVideoCloseBtn"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <div class="prompt-modal-body">
+      <div style="margin-bottom: 16px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">URL de la vidéo YouTube :</label>
+        <input type="text" id="libImportVideoUrl" placeholder="Ex: https://www.youtube.com/watch?v=..." style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">Titre de l'activité (optionnel) :</label>
+        <input type="text" id="libImportVideoTitle" placeholder="Titre qui apparaîtra dans le curriculum" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+      </div>
+      <div class="filter-row" style="margin-top: 16px;">
+        <select id="libImportVideoNiveau"><option value="">Niveau...</option></select>
+        <select id="libImportVideoUnite"><option value="">Unité...</option></select>
+        <select id="libImportVideoSection"><option value="">Section...</option></select>
+        <select id="libImportVideoSujet"><option value="">Sujet...</option></select>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:flex-end;">
+      <button id="libImportVideoConfirmBtn" class="btn-cfg-primary">Ajouter la vidéo</button>
     </div>
   </div>
 </div>
@@ -6088,6 +6119,126 @@ document.getElementById('libImportHtmlConfirmBtn').addEventListener('click', asy
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;
+  }
+});
+
+// ---------- Delete Item ----------
+document.getElementById('libDeleteBtn').addEventListener('click', async () => {
+  if (librarySelected.size !== 1) return alert("Veuillez sélectionner un seul élément à supprimer.");
+  const item = [...librarySelected.values()][0];
+  
+  if (!confirm(`Voulez-vous vraiment supprimer '${item.title}' ?\nCette action est irréversible.`)) return;
+
+  const exIndex = item.row.exercices.findIndex(e => e.type === item.ex.type && e.variante === item.ex.variante);
+  if (exIndex === -1) return alert("Élément introuvable.");
+
+  try {
+    const data = await api('POST', '/api/programme/exercices/remove', { 
+      rowId: item.row.id, 
+      index: exIndex 
+    });
+    state.programme = state.programme.map(r => r.id === item.row.id ? data.row : r);
+    saveToLocalStorage();
+    renderPlanTree('');
+    renderDetail();
+    
+    librarySelected.clear();
+    document.getElementById('libViewerBar').style.display = 'none';
+    document.getElementById('libFrame').srcdoc = '';
+    
+    renderLibraryTree(document.getElementById('libSearch').value);
+  } catch(err) {
+    alert("Erreur lors de la suppression : " + err.message);
+  }
+});
+
+// ---------- Import Video YouTube ----------
+document.getElementById('libImportVideoBtn').addEventListener('click', () => {
+  if (state.programme.length === 0) return alert("Le programme est vide.");
+  const optNiveaux = [...new Set(state.programme.map(r => r.niveau))].sort();
+  const nivSel = document.getElementById('libImportVideoNiveau');
+  nivSel.innerHTML = '<option value="">Niveau...</option>';
+  optNiveaux.forEach(n => nivSel.appendChild(new Option(n, n)));
+  document.getElementById('libImportVideoUrl').value = '';
+  document.getElementById('libImportVideoTitle').value = '';
+  document.getElementById('libImportVideoModal').classList.remove('hidden');
+});
+
+document.getElementById('libImportVideoCloseBtn').addEventListener('click', () => {
+  document.getElementById('libImportVideoModal').classList.add('hidden');
+});
+document.getElementById('libImportVideoModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('libImportVideoModal')) document.getElementById('libImportVideoModal').classList.add('hidden');
+});
+
+function refreshVideoSelect(id, items) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">Choisir...</option>';
+  items.forEach(i => sel.appendChild(new Option(i.label || i, i.value || i)));
+}
+
+document.getElementById('libImportVideoNiveau').addEventListener('change', (e) => {
+  const niv = e.target.value;
+  const unites = [...new Set(state.programme.filter(r => r.niveau === niv).map(r => r.unite))].sort();
+  refreshVideoSelect('libImportVideoUnite', unites);
+  refreshVideoSelect('libImportVideoSection', []);
+  refreshVideoSelect('libImportVideoSujet', []);
+});
+document.getElementById('libImportVideoUnite').addEventListener('change', (e) => {
+  const niv = document.getElementById('libImportVideoNiveau').value;
+  const unite = e.target.value;
+  const sections = [...new Set(state.programme.filter(r => r.niveau === niv && r.unite === unite).map(r => r.section))].sort();
+  refreshVideoSelect('libImportVideoSection', sections);
+  refreshVideoSelect('libImportVideoSujet', []);
+});
+document.getElementById('libImportVideoSection').addEventListener('change', (e) => {
+  const niv = document.getElementById('libImportVideoNiveau').value;
+  const unite = document.getElementById('libImportVideoUnite').value;
+  const sec = e.target.value;
+  const sujets = state.programme.filter(r => r.niveau === niv && r.unite === unite && r.section === sec).map(r => ({value: r.id, label: r.sujet}));
+  refreshVideoSelect('libImportVideoSujet', sujets);
+});
+
+document.getElementById('libImportVideoConfirmBtn').addEventListener('click', async () => {
+  const url = document.getElementById('libImportVideoUrl').value.trim();
+  const rowId = document.getElementById('libImportVideoSujet').value;
+  if (!url || !rowId) return alert("Veuillez remplir l'URL et sélectionner l'emplacement.");
+  
+  let videoId = null;
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[2].length === 11) {
+    videoId = match[2];
+  } else {
+    return alert("L'URL YouTube n'est pas valide.");
+  }
+
+  const title = document.getElementById('libImportVideoTitle').value.trim() || 'Vidéo YouTube';
+  const iframeHtml = `<div style="display:flex;justify-content:center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+
+  const btn = document.getElementById('libImportVideoConfirmBtn');
+  btn.disabled = true;
+  try {
+    const items = [{
+      rowId: rowId,
+      type: 'video',
+      variante: slugifyJs(title) || 'video-' + videoId,
+      contenuB64: utf8ToB64(iframeHtml),
+      isYoutube: true,
+      youtubeId: videoId
+    }];
+    const data = await api('POST', '/api/programme/exercices/import', { items });
+    state.programme = data.programme;
+    saveToLocalStorage();
+    renderPlanTree('');
+    renderDetail();
+    renderLibraryTree(document.getElementById('libSearch').value);
+    document.getElementById('libImportVideoModal').classList.add('hidden');
+    alert("Vidéo importée avec succès !");
+  } catch (err) {
+    alert("Erreur lors de l'import : " + err.message);
+  } finally {
+    btn.disabled = false;
   }
 });
 

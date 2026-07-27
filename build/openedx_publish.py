@@ -608,11 +608,25 @@ def publish_course(rows, catalogue, opts, progress_cb=lambda msg: None):
                 row = vertical["row"]
 
                 ordered_prob_locs = []
+                
+                # Pre-processing: handle Youtube videos
+                temp_exercices = []
+                for ex in vertical["exercices"]:
+                    display_name_ex = f"{row.get('titre', '')} — {label_for_type(catalogue, ex.get('type', ''))}"
+                    if ex.get("isYoutube") and ex.get("youtubeId"):
+                        video_xml = f'<video display_name="{display_name_ex}" youtube="1.00:{ex["youtubeId"]}" />'
+                        prob_loc = find_or_create_block(session, studio_url, course_id, blocks_by_id, vert_locator, "video", display_name_ex, data=video_xml)
+                        if prob_loc: ordered_prob_locs.append(prob_loc)
+                        if "video" not in counts: counts["video"] = 0
+                        counts["video"] += 1
+                    else:
+                        temp_exercices.append(ex)
+
                 def sort_key(ex):
                     if ex.get("isPdf"): return 0
                     dec = generate_local.b64_to_utf8(ex["contenuB64"])
                     return 1 if is_gradable_exercice(dec) else 0
-                sorted_exercices = sorted(vertical["exercices"], key=sort_key)
+                sorted_exercices = sorted(temp_exercices, key=sort_key)
                 
                 for i, ex in enumerate(sorted_exercices):
                     is_pdf = ex.get("isPdf", False)

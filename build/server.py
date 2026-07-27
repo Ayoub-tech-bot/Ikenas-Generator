@@ -1071,6 +1071,9 @@ class Handler(BaseHTTPRequestHandler):
                 if item.get("isPdf"):
                     ex["isPdf"] = True
                     ex["pdfBase64"] = item.get("pdfBase64")
+                if item.get("isYoutube"):
+                    ex["isYoutube"] = True
+                    ex["youtubeId"] = item.get("youtubeId")
                 ex["statut"] = "genere"
                 ex["genereLe"] = import_date
                 ex["demandeModification"] = ""
